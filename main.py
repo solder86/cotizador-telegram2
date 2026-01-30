@@ -122,7 +122,7 @@ def generar_pdf(datos):
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = update.message.text.lower().strip()
 
-    # START
+    # /start
     if texto == "/start":
         context.user_data.clear()
         await update.message.reply_text(
@@ -132,7 +132,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # INICIO
+    # iniciar
     if texto == "cotizar":
         context.user_data.clear()
         await update.message.reply_text(
@@ -245,6 +245,16 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             document=open(ruta_pdf, "rb"),
             filename="Cotizacion_Nave_Industrial_DOS-P.pdf",
             caption="📄 Cotización preliminar – DOS-P Innovación Inmobiliaria"
+        )
+
+        # 🔄 RESET DEL FLUJO
+        context.user_data.clear()
+
+        await update.message.reply_text(
+            "✅ Cotización finalizada.\n\n"
+            "Escribe *cotizar* para una nueva cotización\n"
+            "o */start* para reiniciar.",
+            parse_mode="Markdown"
         )
         return
 
