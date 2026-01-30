@@ -2,11 +2,12 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 import os
 import tempfile
+
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 # =========================
-# CONFIGURACIÓN
+# CONFIGURACIÓN GENERAL
 # =========================
 TOKEN = os.environ["BOT_TOKEN"]
 
@@ -48,7 +49,7 @@ EQUIPAMIENTO = {
 }
 
 # =========================
-# PDF
+# FUNCIÓN PDF
 # =========================
 def generar_pdf(datos):
     archivo = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
@@ -76,7 +77,7 @@ def generar_pdf(datos):
         c.drawString(60, y, f"- {item}")
         y -= 15
 
-    y -= 20
+    y -= 25
     c.setFont("Helvetica-Bold", 12)
     c.drawString(50, y, "Inversión estimada:")
     y -= 20
@@ -105,6 +106,7 @@ def generar_pdf(datos):
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = update.message.text.lower().strip()
 
+    # START
     if texto == "/start":
         context.user_data.clear()
         await update.message.reply_text(
@@ -114,19 +116,28 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # INICIAR
     if texto == "cotizar":
         context.user_data.clear()
-        await update.message.reply_text("📐 ¿Cuántos metros cuadrados tendrá la nave?")
+        await update.message.reply_text(
+            "📐 ¿Cuántos metros cuadrados tendrá la nave?"
+        )
         return
 
+    # m2
     if "m2" not in context.user_data:
         try:
             context.user_data["m2"] = float(texto)
-            await update.message.reply_text("🏗️ ¿Cuál será la altura libre en metros?")
+            await update.message.reply_text(
+                "🏗️ ¿Cuál será la altura libre en metros?"
+            )
         except:
-            await update.message.reply_text("⚠️ Ingresa solo números. Ejemplo: 2000")
+            await update.message.reply_text(
+                "⚠️ Ingresa solo números. Ejemplo: 2000"
+            )
         return
 
+    # altura
     if "altura" not in context.user_data:
         try:
             context.user_data["altura"] = float(texto)
@@ -135,9 +146,12 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Ejemplo: Jalisco, Querétaro, Nuevo León"
             )
         except:
-            await update.message.reply_text("⚠️ Ingresa un número válido.")
+            await update.message.reply_text(
+                "⚠️ Ingresa un número válido."
+            )
         return
 
+    # estado
     if "estado" not in context.user_data:
         context.user_data["estado"] = texto
         await update.message.reply_text(
@@ -149,6 +163,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # equipamiento + cálculo
     if "equipamiento" not in context.user_data:
         if texto not in EQUIPAMIENTO:
             await update.message.reply_text(
@@ -165,10 +180,13 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         equip = texto
 
         costo_m2 = BASE_COST
+
         if altura >= 10:
             costo_m2 += 800
+
         if estado in ["nuevo león", "cdmx"]:
             costo_m2 += 600
+
         costo_m2 += EQUIPAMIENTO[equip]["costo"]
 
         minimo = m2 * costo_m2
@@ -211,7 +229,9 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    await update.message.reply_text("Escribe *cotizar* para iniciar una nueva cotización.")
+    await update.message.reply_text(
+        "Escribe *cotizar* para iniciar una nueva cotización."
+    )
 
 # =========================
 # RUN
