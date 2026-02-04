@@ -10,15 +10,13 @@ from reportlab.pdfgen import canvas
 # =========================
 TOKEN = os.environ["BOT_TOKEN"]
 
-BASE_COST = 7000          # MXN por m²
-PROJECT_COST_M2 = 140     # Proyecto ejecutivo
+BASE_COST = 7000
+PROJECT_COST_M2 = 140
 ANTICIPO_PORCENTAJE = 0.30
 
-# 👉 Telegram del vendedor CON mensaje de inicio
 VENDEDOR_TELEGRAM = (
     "https://t.me/ventas_dosp?"
-    "text=Hola%20vengo%20del%20cotizador%20de%20naves%20industriales.%20"
-    "Ya%20realic%C3%A9%20una%20cotizaci%C3%B3n%20y%20me%20gustar%C3%ADa%20continuar."
+    "text=Hola%20vengo%20del%20cotizador%20de%20naves%20industriales."
 )
 
 EQUIPAMIENTO = {
@@ -51,11 +49,11 @@ EQUIPAMIENTO = {
             "Cubierta y fachadas especializadas",
             "Piso industrial de máxima capacidad",
             "Instalación eléctrica avanzada",
-            "Iluminación especializada por área",
+            "Iluminación especializada",
             "Sistema HVAC",
             "Sistema contra incendios (sprinklers)",
-            "Oficinas totalmente equipadas",
-            "Cumplimiento de normativa industrial avanzada"
+            "Oficinas equipadas",
+            "Normativa industrial avanzada"
         ]
     }
 }
@@ -66,32 +64,25 @@ EQUIPAMIENTO = {
 def generar_pdf(datos):
     archivo = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     c = canvas.Canvas(archivo.name, pagesize=letter)
-    width, height = letter
-    y = height - 40
+    y = letter[1] - 40
 
     c.setFont("Helvetica-Bold", 16)
     c.drawString(50, y, "DOS-P | Innovación Inmobiliaria")
-    y -= 20
-
-    c.setFont("Helvetica", 10)
-    c.drawString(50, y, "Arq. Noel Peña")
-    y -= 14
-    c.drawString(50, y, "Cel. 33 1720 4455")
-    y -= 30
+    y -= 25
 
     c.setFont("Helvetica-Bold", 14)
     c.drawString(50, y, "Cotización Preliminar – Nave Industrial")
     y -= 30
 
     c.setFont("Helvetica", 11)
-    c.drawString(50, y, f"Superficie: {datos['m2']:,.0f} m²"); y -= 18
-    c.drawString(50, y, f"Altura libre: {datos['altura']} m"); y -= 18
-    c.drawString(50, y, f"Estado: {datos['estado'].title()}"); y -= 18
-    c.drawString(50, y, f"Equipamiento: {datos['equipamiento'].title()}"); y -= 25
+    c.drawString(50, y, f"Superficie nave: {datos['m2']:,.0f} m²"); y -= 16
+    c.drawString(50, y, f"Altura libre: {datos['altura']} m"); y -= 16
+    c.drawString(50, y, f"Estado: {datos['estado'].title()}"); y -= 16
+    c.drawString(50, y, f"Equipamiento: {datos['equipamiento'].title()}"); y -= 20
 
     c.setFont("Helvetica-Bold", 12)
     c.drawString(50, y, "Incluye:")
-    y -= 18
+    y -= 16
 
     c.setFont("Helvetica", 11)
     for item in datos["caracteristicas"]:
@@ -101,7 +92,7 @@ def generar_pdf(datos):
     y -= 20
     c.setFont("Helvetica-Bold", 12)
     c.drawString(50, y, "Inversión estimada:")
-    y -= 18
+    y -= 16
 
     c.setFont("Helvetica", 11)
     c.drawString(50, y, f"${datos['minimo']:,.0f} – ${datos['maximo']:,.0f} MXN")
@@ -120,166 +111,113 @@ def generar_pdf(datos):
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = update.message.text.lower().strip()
 
-    # /start
     if texto == "/start":
         context.user_data.clear()
         await update.message.reply_text(
-            "👷‍♂️ Cotizador de Naves Industriales\n\n"
-            "Escribe cotizar para iniciar.",
+            "👷‍♂️ *Cotizador de Naves Industriales*\n\nEscribe *cotizar* para iniciar.",
             parse_mode="Markdown"
         )
         return
 
-    # iniciar
     if texto == "cotizar":
         context.user_data.clear()
-        await update.message.reply_text("📐 ¿Cuántos metros cuadrados tendrá la nave?")
+        await update.message.reply_text("📐 ¿Cuántos m² tendrá la nave?")
         return
 
-    # =========================
-    # POST COTIZACIÓN – TERRENO
-    # =========================
+    # ---------- POST COTIZACIÓN ----------
     if context.user_data.get("post_cotizacion") and "tiene_terreno" not in context.user_data:
         if texto in ["si", "sí"]:
             context.user_data["tiene_terreno"] = True
-            await update.message.reply_text(
-                "📐 Indica las dimensiones del terreno\nEjemplo: 20x30 mts",
-                parse_mode="Markdown"
-            )
+            await update.message.reply_text("📐 Dimensiones del terreno (ej. 30x50)")
         elif texto == "no":
-            if "ruta_pdf" in context.user_data:
-                await update.message.reply_document(
-                    open(context.user_data["ruta_pdf"], "rb"),
-                    filename="Cotizacion_Nave_Industrial_DOS-P.pdf",
-                    caption="📄 Cotización preliminar de referencia"
-                )
-
-            await update.message.reply_text(
-                "📞 Contacta directamente a un asesor:\n"
-                f"👉 {VENDEDOR_TELEGRAM}"
-            )
-
+            await update.message.reply_text(f"📞 Contacta a un asesor:\n👉 {VENDEDOR_TELEGRAM}")
             context.user_data.clear()
-            await update.message.reply_text(
-                "✅ Proceso finalizado.\n\n"
-                "Escribe cotizar para cotizar otra obra\n"
-                "o /start para reiniciar.",
-                parse_mode="Markdown"
-            )
-        else:
-            await update.message.reply_text("Responde Sí o No")
         return
 
-    # DIMENSIONES
     if "tiene_terreno" in context.user_data and "dimensiones" not in context.user_data:
         context.user_data["dimensiones"] = texto
-        await update.message.reply_text("📍 ¿En qué estado o ciudad se ubica el terreno?")
+        await update.message.reply_text("📍 ¿Estado o ciudad del terreno?")
         return
 
-    # CIUDAD + PROYECTO EJECUTIVO
     if "dimensiones" in context.user_data and "ciudad_proyecto" not in context.user_data:
         context.user_data["ciudad_proyecto"] = texto
 
-        m2 = context.user_data["m2"]
-        costo = m2 * PROJECT_COST_M2
+        try:
+            dim = context.user_data["dimensiones"].replace("mts", "").replace("m", "")
+            a, l = dim.split("x")
+            m2_terreno = float(a) * float(l)
+        except:
+            await update.message.reply_text("⚠️ Usa formato correcto: 20x30")
+            return
+
+        costo = m2_terreno * PROJECT_COST_M2
         anticipo = costo * ANTICIPO_PORCENTAJE
 
         await update.message.reply_text(
-            "📐 Proyecto Ejecutivo Incluye:\n"
+            "📐 *Proyecto Ejecutivo*\n"
             "• Mecánica de suelos\n"
             "• Cálculo estructural\n"
             "• Planos arquitectónicos\n\n"
-            f"💰 Costo del proyecto: ${costo:,.0f} MXN\n"
+            f"📏 Área terreno: {m2_terreno:,.0f} m²\n"
+            f"💰 Costo: ${costo:,.0f} MXN\n"
             f"🔻 Anticipo 30%: ${anticipo:,.0f} MXN\n\n"
-            "📞 Contacta directamente a un asesor:\n"
-            f"👉 {VENDEDOR_TELEGRAM}",
+            f"📞 Asesor:\n👉 {VENDEDOR_TELEGRAM}",
             parse_mode="Markdown"
         )
 
         if "ruta_pdf" in context.user_data:
-            await update.message.reply_document(
-                open(context.user_data["ruta_pdf"], "rb"),
-                filename="Cotizacion_Nave_Industrial_DOS-P.pdf",
-                caption="📄 Cotización preliminar de tu proyecto"
-            )
+            await update.message.reply_document(open(context.user_data["ruta_pdf"], "rb"))
 
         context.user_data.clear()
-        await update.message.reply_text(
-            "✅ Proceso finalizado.\n\n"
-            "Escribe cotizar para cotizar otra obra\n"
-            "o /start para reiniciar.",
-            parse_mode="Markdown"
-        )
         return
 
-    # =========================
-    # COTIZACIÓN DE NAVE
-    # =========================
+    # ---------- COTIZACIÓN ----------
     if "m2" not in context.user_data:
         try:
-            m2 = float(texto)
-            if m2 <= 0:
-                raise ValueError
-            context.user_data["m2"] = m2
-            await update.message.reply_text("🏗️ ¿Altura libre en metros?")
+            context.user_data["m2"] = float(texto)
+            await update.message.reply_text("🏗️ Altura libre (m)?")
         except:
-            await update.message.reply_text("⚠️ Ingresa un número válido.")
+            await update.message.reply_text("⚠️ Número inválido")
         return
 
     if "altura" not in context.user_data:
         try:
-            altura = float(texto)
-            if altura < 4 or altura > 20:
-                raise ValueError
-            context.user_data["altura"] = altura
-            await update.message.reply_text("📍 ¿En qué estado se construirá?")
+            context.user_data["altura"] = float(texto)
+            await update.message.reply_text("📍 Estado de construcción?")
         except:
-            await update.message.reply_text("⚠️ Altura inválida.")
+            await update.message.reply_text("⚠️ Altura inválida")
         return
 
     if "estado" not in context.user_data:
         context.user_data["estado"] = texto
-        await update.message.reply_text(
-            "⚙️ Nivel de equipamiento:\n\n"
-            "🟢 Basico\n🟡 Intermedio\n🔴 Premium\n\n"
-            "Escribe: Basico / Intermedio / Premium"
-        )
+        await update.message.reply_text("🟢 Basico\n🟡 Intermedio\n🔴 Premium")
         return
 
     if "equipamiento" not in context.user_data:
         if texto not in EQUIPAMIENTO:
-            await update.message.reply_text("⚠️ Opción no válida.")
+            await update.message.reply_text("⚠️ Opción inválida")
             return
 
         context.user_data["equipamiento"] = texto
-
         m2 = context.user_data["m2"]
         altura = context.user_data["altura"]
         estado = context.user_data["estado"]
-        equip = texto
 
-        costo_m2 = BASE_COST
+        costo_m2 = BASE_COST + EQUIPAMIENTO[texto]["costo"]
         if altura >= 10:
             costo_m2 += 800
-        if estado in ["nuevo león", "cdmx"]:
+        if estado in ["jalisco", "cdmx", "nuevo león"]:
             costo_m2 += 600
-        costo_m2 += EQUIPAMIENTO[equip]["costo"]
 
         minimo = m2 * costo_m2
         maximo = minimo * 1.12
-
-        await update.message.reply_text(
-            f"📐 Cotización preliminar\n\n"
-            f"💰 ${minimo:,.0f} – ${maximo:,.0f} MXN",
-            parse_mode="Markdown"
-        )
 
         datos_pdf = {
             "m2": m2,
             "altura": altura,
             "estado": estado,
-            "equipamiento": equip,
-            "caracteristicas": EQUIPAMIENTO[equip]["descripcion"],
+            "equipamiento": texto,
+            "caracteristicas": EQUIPAMIENTO[texto]["descripcion"],
             "minimo": minimo,
             "maximo": maximo
         }
@@ -287,15 +225,15 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ruta = generar_pdf(datos_pdf)
         context.user_data["ruta_pdf"] = ruta
 
-        await update.message.reply_document(
-            open(ruta, "rb"),
-            filename="Cotizacion_Nave_Industrial_DOS-P.pdf"
+        await update.message.reply_text(
+            f"💰 *Cotización:* ${minimo:,.0f} – ${maximo:,.0f} MXN",
+            parse_mode="Markdown"
         )
+        await update.message.reply_document(open(ruta, "rb"))
 
         context.user_data["post_cotizacion"] = True
         await update.message.reply_text(
-            "👉 Cotiza tu proyecto ejecutivo para arrancar números reales\n\n"
-            "¿Ya cuentas con el terreno?\nResponde: Sí o No",
+            "👉 *Cotiza tu proyecto ejecutivo*\n¿Ya cuentas con el terreno?\nResponde: Sí / No",
             parse_mode="Markdown"
         )
         return
