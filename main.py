@@ -124,8 +124,8 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if texto == "/start":
         context.user_data.clear()
         await update.message.reply_text(
-            "👷‍♂️ *Cotizador de Naves Industriales*\n\n"
-            "Escribe *cotizar* para iniciar.",
+            "👷‍♂️ Cotizador de Naves Industriales\n\n"
+            "Escribe cotizar para iniciar.",
             parse_mode="Markdown"
         )
         return
@@ -143,7 +143,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if texto in ["si", "sí"]:
             context.user_data["tiene_terreno"] = True
             await update.message.reply_text(
-                "📐 Indica las *dimensiones del terreno*\nEjemplo: 20x30 mts",
+                "📐 Indica las dimensiones del terreno\nEjemplo: 20x30 mts",
                 parse_mode="Markdown"
             )
         elif texto == "no":
@@ -162,12 +162,12 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data.clear()
             await update.message.reply_text(
                 "✅ Proceso finalizado.\n\n"
-                "Escribe *cotizar* para cotizar otra obra\n"
-                "o */start* para reiniciar.",
+                "Escribe cotizar para cotizar otra obra\n"
+                "o /start para reiniciar.",
                 parse_mode="Markdown"
             )
         else:
-            await update.message.reply_text("Responde *Sí* o *No*")
+            await update.message.reply_text("Responde Sí o No")
         return
 
     # DIMENSIONES
@@ -185,12 +185,12 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         anticipo = costo * ANTICIPO_PORCENTAJE
 
         await update.message.reply_text(
-            "📐 *Proyecto Ejecutivo Incluye:*\n"
+            "📐 Proyecto Ejecutivo Incluye:\n"
             "• Mecánica de suelos\n"
             "• Cálculo estructural\n"
             "• Planos arquitectónicos\n\n"
-            f"💰 *Costo del proyecto:* ${costo:,.0f} MXN\n"
-            f"🔻 *Anticipo 30%:* ${anticipo:,.0f} MXN\n\n"
+            f"💰 Costo del proyecto: ${costo:,.0f} MXN\n"
+            f"🔻 Anticipo 30%: ${anticipo:,.0f} MXN\n\n"
             "📞 Contacta directamente a un asesor:\n"
             f"👉 {VENDEDOR_TELEGRAM}",
             parse_mode="Markdown"
@@ -206,8 +206,8 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
         await update.message.reply_text(
             "✅ Proceso finalizado.\n\n"
-            "Escribe *cotizar* para cotizar otra obra\n"
-            "o */start* para reiniciar.",
+            "Escribe cotizar para cotizar otra obra\n"
+            "o /start para reiniciar.",
             parse_mode="Markdown"
         )
         return
@@ -269,7 +269,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         maximo = minimo * 1.12
 
         await update.message.reply_text(
-            f"📐 *Cotización preliminar*\n\n"
+            f"📐 Cotización preliminar\n\n"
             f"💰 ${minimo:,.0f} – ${maximo:,.0f} MXN",
             parse_mode="Markdown"
         )
@@ -294,8 +294,8 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.user_data["post_cotizacion"] = True
         await update.message.reply_text(
-            "👉 *Cotiza tu proyecto ejecutivo para arrancar números reales*\n\n"
-            "¿Ya cuentas con el terreno?\nResponde: *Sí* o *No*",
+            "👉 Cotiza tu proyecto ejecutivo para arrancar números reales\n\n"
+            "¿Ya cuentas con el terreno?\nResponde: Sí o No",
             parse_mode="Markdown"
         )
         return
