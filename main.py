@@ -10,9 +10,16 @@ from reportlab.pdfgen import canvas
 # =========================
 TOKEN = os.environ["BOT_TOKEN"]
 
-BASE_COST = 7000  # MXN por m²
-PROJECT_COST_M2 = 140
+BASE_COST = 7000          # MXN por m²
+PROJECT_COST_M2 = 140     # Proyecto ejecutivo
 ANTICIPO_PORCENTAJE = 0.30
+
+# 👉 Telegram del vendedor CON mensaje de inicio
+VENDEDOR_TELEGRAM = (
+    "https://t.me/ventas_dosp?"
+    "text=Hola%20vengo%20del%20cotizador%20de%20naves%20industriales.%20"
+    "Ya%20realic%C3%A9%20una%20cotizaci%C3%B3n%20y%20me%20gustar%C3%ADa%20continuar."
+)
 
 EQUIPAMIENTO = {
     "basico": {
@@ -67,7 +74,7 @@ def generar_pdf(datos):
     y -= 20
 
     c.setFont("Helvetica", 10)
-    c.drawString(50, y, "Arq. Giovanni Peña Camacho")
+    c.drawString(50, y, "Arq. Noel Peña")
     y -= 14
     c.drawString(50, y, "Cel. 33 1720 4455")
     y -= 30
@@ -129,7 +136,9 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📐 ¿Cuántos metros cuadrados tendrá la nave?")
         return
 
+    # =========================
     # POST COTIZACIÓN – TERRENO
+    # =========================
     if context.user_data.get("post_cotizacion") and "tiene_terreno" not in context.user_data:
         if texto in ["si", "sí"]:
             context.user_data["tiene_terreno"] = True
@@ -138,10 +147,18 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
         elif texto == "no":
+            if "ruta_pdf" in context.user_data:
+                await update.message.reply_document(
+                    open(context.user_data["ruta_pdf"], "rb"),
+                    filename="Cotizacion_Nave_Industrial_DOS-P.pdf",
+                    caption="📄 Cotización preliminar de referencia"
+                )
+
             await update.message.reply_text(
-                "📞 Agenda una llamada con un asesor:\n"
-                "👉 https://calendly.com/tu-link-aqui"
+                "📞 Contacta directamente a un asesor:\n"
+                f"👉 {VENDEDOR_TELEGRAM}"
             )
+
             context.user_data.clear()
             await update.message.reply_text(
                 "✅ Proceso finalizado.\n\n"
@@ -162,6 +179,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # CIUDAD + PROYECTO EJECUTIVO
     if "dimensiones" in context.user_data and "ciudad_proyecto" not in context.user_data:
         context.user_data["ciudad_proyecto"] = texto
+
         m2 = context.user_data["m2"]
         costo = m2 * PROJECT_COST_M2
         anticipo = costo * ANTICIPO_PORCENTAJE
@@ -171,12 +189,19 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• Mecánica de suelos\n"
             "• Cálculo estructural\n"
             "• Planos arquitectónicos\n\n"
-            f"💰 *Costo:* ${costo:,.0f} MXN\n"
+            f"💰 *Costo del proyecto:* ${costo:,.0f} MXN\n"
             f"🔻 *Anticipo 30%:* ${anticipo:,.0f} MXN\n\n"
-            "📞 Agenda tu llamada:\n"
-            "👉 https://calendly.com/tu-link-aqui",
+            "📞 Contacta directamente a un asesor:\n"
+            f"👉 {VENDEDOR_TELEGRAM}",
             parse_mode="Markdown"
         )
+
+        if "ruta_pdf" in context.user_data:
+            await update.message.reply_document(
+                open(context.user_data["ruta_pdf"], "rb"),
+                filename="Cotizacion_Nave_Industrial_DOS-P.pdf",
+                caption="📄 Cotización preliminar de tu proyecto"
+            )
 
         context.user_data.clear()
         await update.message.reply_text(
@@ -187,7 +212,9 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # PASO 1: m2
+    # =========================
+    # COTIZACIÓN DE NAVE
+    # =========================
     if "m2" not in context.user_data:
         try:
             m2 = float(texto)
@@ -199,7 +226,6 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ Ingresa un número válido.")
         return
 
-    # PASO 2: altura
     if "altura" not in context.user_data:
         try:
             altura = float(texto)
@@ -211,7 +237,6 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ Altura inválida.")
         return
 
-    # PASO 3: estado
     if "estado" not in context.user_data:
         context.user_data["estado"] = texto
         await update.message.reply_text(
@@ -221,7 +246,6 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # PASO 4: equipamiento
     if "equipamiento" not in context.user_data:
         if texto not in EQUIPAMIENTO:
             await update.message.reply_text("⚠️ Opción no válida.")
@@ -244,13 +268,8 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         minimo = m2 * costo_m2
         maximo = minimo * 1.12
 
-        caracteristicas = "\n".join(
-            f"• {i}" for i in EQUIPAMIENTO[equip]["descripcion"]
-        )
-
         await update.message.reply_text(
-            "📐 *Cotización preliminar*\n\n"
-            f"{caracteristicas}\n\n"
+            f"📐 *Cotización preliminar*\n\n"
             f"💰 ${minimo:,.0f} – ${maximo:,.0f} MXN",
             parse_mode="Markdown"
         )
@@ -266,7 +285,12 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         ruta = generar_pdf(datos_pdf)
-        await update.message.reply_document(open(ruta, "rb"))
+        context.user_data["ruta_pdf"] = ruta
+
+        await update.message.reply_document(
+            open(ruta, "rb"),
+            filename="Cotizacion_Nave_Industrial_DOS-P.pdf"
+        )
 
         context.user_data["post_cotizacion"] = True
         await update.message.reply_text(
