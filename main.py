@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-import os, tempfile
+import os
+import tempfile
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
@@ -15,64 +16,59 @@ ANTICIPO = 0.30
 
 VENDEDOR_TELEGRAM = (
     "https://t.me/ventas_dosp?"
-    "text=Hola%20vengo%20del%20cotizador%20de%20naves%20industriales%20"
-    "y%20quiero%20continuar%20con%20mi%20proyecto."
+    "text=Hola%20vengo%20del%20cotizador%20de%20naves%20industriales"
 )
 
 EQUIPAMIENTO = {
-    "básica": {
+    "basico": {
         "costo": 0,
         "desc": [
             "Estructura metálica principal",
-            "Cubierta y fachadas de lámina",
-            "Piso industrial de concreto estándar",
-            "Instalación eléctrica básica",
-            "Preparación para futuras ampliaciones"
+            "Cubierta y fachadas",
+            "Piso industrial básico",
+            "Instalación eléctrica básica"
         ]
     },
     "intermedio": {
         "costo": 1200,
         "desc": [
-            "Estructura metálica reforzada",
-            "Cubierta y fachadas industriales",
-            "Piso industrial de alta resistencia",
-            "Instalación eléctrica industrial",
+            "Todo lo básico",
+            "Piso de alta resistencia",
             "Iluminación LED industrial",
-            "Andenes de carga",
-            "Área de oficinas administrativas"
+            "Oficinas administrativas"
         ]
     },
     "premium": {
         "costo": 2500,
         "desc": [
-            "Estructura metálica de alto desempeño",
-            "Cubierta y fachadas especializadas",
-            "Piso industrial de máxima capacidad",
-            "Instalación eléctrica avanzada",
-            "Iluminación especializada",
-            "Sistema HVAC",
-            "Sistema contra incendios (sprinklers)",
-            "Oficinas equipadas",
-            "Cumplimiento de normativa industrial avanzada"
+            "Todo lo intermedio",
+            "HVAC",
+            "Sistema contra incendios",
+            "Oficinas equipadas"
         ]
     }
 }
+
+def etiqueta_equipamiento(key: str) -> str:
+    if key == "basico":
+        return "Básico"
+    return key.title()
 
 # =========================
 # PDF CONSOLIDADO
 # =========================
 def generar_pdf(datos):
-    f = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    c = canvas.Canvas(f.name, pagesize=letter)
+    archivo = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    c = canvas.Canvas(archivo.name, pagesize=letter)
     width, height = letter
     y = height - 40
 
-    # -------- HEADER --------
+    # HEADER
     c.setFont("Helvetica-Bold", 16)
     c.drawString(50, y, "DOS-P | Innovación Inmobiliaria")
     y -= 30
 
-    # ===== SECCIÓN 1: NAVE =====
+    # SECCIÓN 1 – NAVE
     c.setFont("Helvetica-Bold", 14)
     c.drawString(50, y, "1. Cotización Nave Industrial")
     y -= 25
@@ -81,52 +77,52 @@ def generar_pdf(datos):
     c.drawString(50, y, f"Superficie: {datos['m2']:,.0f} m²"); y -= 16
     c.drawString(50, y, f"Altura libre: {datos['altura']} m"); y -= 16
     c.drawString(50, y, f"Estado: {datos['estado'].title()}"); y -= 16
-    c.drawString(50, y, f"Equipamiento: {datos['equipamiento'].title()}"); y -= 20
+    c.drawString(
+        50, y,
+        f"Equipamiento: {etiqueta_equipamiento(datos['equipamiento'])}"
+    )
+    y -= 20
 
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, y, "Incluye:")
-    y -= 16
-
-    c.setFont("Helvetica", 11)
     for i in datos["desc"]:
         c.drawString(60, y, f"- {i}")
         y -= 14
 
-    y -= 15
+    y -= 20
     c.setFont("Helvetica-Bold", 12)
     c.drawString(
         50, y,
         f"Inversión nave: ${datos['nave_min']:,.0f} – ${datos['nave_max']:,.0f} MXN"
     )
 
-    # -------- NUEVA PÁGINA --------
+    # NUEVA PÁGINA
     c.showPage()
     y = height - 40
 
-    # ===== SECCIÓN 2: PROYECTO =====
+    # SECCIÓN 2 – PROYECTO
     c.setFont("Helvetica-Bold", 14)
     c.drawString(50, y, "2. Proyecto Ejecutivo")
     y -= 25
 
     c.setFont("Helvetica", 11)
-    c.drawString(50, y, "Incluye:")
-    y -= 16
     c.drawString(60, y, "- Mecánica de suelos"); y -= 14
     c.drawString(60, y, "- Cálculo estructural"); y -= 14
     c.drawString(60, y, "- Planos arquitectónicos"); y -= 20
 
-    c.drawString(50, y, f"Área del terreno: {datos['m2_terreno']:,.0f} m²"); y -= 16
+    c.drawString(50, y, f"Área terreno: {datos['m2_terreno']:,.0f} m²"); y -= 16
     c.drawString(50, y, f"Costo proyecto: ${datos['proy_costo']:,.0f} MXN"); y -= 16
     c.drawString(
         50, y,
         f"Anticipo 30%: ${datos['proy_costo'] * ANTICIPO:,.0f} MXN"
     )
 
-    # -------- NUEVA PÁGINA --------
+    # NUEVA PÁGINA
     c.showPage()
     y = height - 40
 
-    # ===== SECCIÓN 3: RESUMEN =====
+    # SECCIÓN 3 – RESUMEN
+    total_min = datos["nave_min"] + datos["proy_costo"]
+    total_max = datos["nave_max"] + datos["proy_costo"]
+
     c.setFont("Helvetica-Bold", 14)
     c.drawString(50, y, "3. Resumen General del Proyecto")
     y -= 30
@@ -140,28 +136,18 @@ def generar_pdf(datos):
     c.drawString(50, y, f"Proyecto ejecutivo: ${datos['proy_costo']:,.0f} MXN")
     y -= 25
 
-    total_min = datos['nave_min'] + datos['proy_costo']
-    total_max = datos['nave_max'] + datos['proy_costo']
-
     c.setFont("Helvetica-Bold", 12)
     c.drawString(
         50, y,
-        f"Total estimado del proyecto: ${total_min:,.0f} – ${total_max:,.0f} MXN"
-    )
-
-    y -= 30
-    c.setFont("Helvetica-Oblique", 9)
-    c.drawString(
-        50, y,
-        "Cotización preliminar, no contractual. Sujeta a proyecto ejecutivo."
+        f"TOTAL ESTIMADO: ${total_min:,.0f} – ${total_max:,.0f} MXN"
     )
 
     c.showPage()
     c.save()
-    return f.name
+    return archivo.name
 
 # =========================
-# BOT (MISMA LÓGICA FINAL)
+# BOT
 # =========================
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = update.message.text.lower().strip()
@@ -183,21 +169,24 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if step == "ALTURA":
         context.user_data["altura"] = float(texto)
         context.user_data["step"] = "ESTADO"
-        await update.message.reply_text("📍 ¿En qué estado se construirá?")
+        await update.message.reply_text("📍 ¿Estado de construcción?")
         return
 
     if step == "ESTADO":
         context.user_data["estado"] = texto
         context.user_data["step"] = "EQUIP"
-        await update.message.reply_text("Basico / Intermedio / Premium")
+        await update.message.reply_text("Básico / Intermedio / Premium")
         return
 
     if step == "EQUIP":
+        if texto not in EQUIPAMIENTO:
+            await update.message.reply_text("Elige: Básico / Intermedio / Premium")
+            return
+
         eq = EQUIPAMIENTO[texto]
         m2 = context.user_data["m2"]
-        costo_m2 = BASE_COST + eq["costo"]
 
-        nave_min = m2 * costo_m2
+        nave_min = m2 * (BASE_COST + eq["costo"])
         nave_max = nave_min * 1.12
 
         context.user_data.update({
@@ -209,7 +198,8 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         })
 
         await update.message.reply_text(
-            f"💰 Nave: ${nave_min:,.0f} – ${nave_max:,.0f} MXN\n"
+            f"💰 Nave ({etiqueta_equipamiento(texto)}): "
+            f"${nave_min:,.0f} – ${nave_max:,.0f} MXN\n\n"
             "👉 ¿Ya cuentas con el terreno? (Sí / No)"
         )
         return
@@ -219,8 +209,8 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["step"] = "DIM"
             await update.message.reply_text("📐 Dimensiones del terreno (ej. 30x50)")
         else:
-            context.user_data["proy_costo"] = 0
             context.user_data["m2_terreno"] = 0
+            context.user_data["proy_costo"] = 0
             context.user_data["step"] = "PDF"
         return
 
@@ -245,17 +235,15 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text(
-            "👉 Lo ideal es continuar este proceso con un asesor especializado\n"
-            f"{VENDEDOR_TELEGRAM}\n\n"
-            "🔁 Para cotizar nueva obra escribe: cotizar"
+            "👉 *Habla con un asesor para continuar tu proyecto:*\n"
+            f"{VENDEDOR_TELEGRAM}",
+            parse_mode="Markdown"
         )
 
-
-    # Mensaje FINAL del bot
-await update.message.reply_text(
-    "🔁 Para cotizar un nuevo proyecto escribe: cotizar",
-    parse_mode="Markdown"
-)
+        await update.message.reply_text(
+            "🔁 *Para cotizar un nuevo proyecto escribe:* `cotizar`",
+            parse_mode="Markdown"
+        )
 
         context.user_data.clear()
         return
