@@ -20,7 +20,7 @@ VENDEDOR_TELEGRAM = (
 )
 
 EQUIPAMIENTO = {
-    "basico": {
+    "básica": {
         "costo": 0,
         "desc": [
             "Estructura metálica principal",
@@ -142,7 +142,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["step"] = "NAVE_EQUIP"
         await update.message.reply_text(
             "⚙️ Nivel de equipamiento:\n\n"
-            "🟢 Basico\n🟡 Intermedio\n🔴 Premium\n\n"
+            "🟢 Básica\n🟡 Intermedio\n🔴 Premium\n\n"
             "Escribe: Basico / Intermedio / Premium"
         )
         return
