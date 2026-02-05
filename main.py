@@ -16,11 +16,11 @@ ANTICIPO = 0.30
 VENDEDOR_TELEGRAM = (
     "https://t.me/ventas_dosp?"
     "text=Hola%20vengo%20del%20cotizador%20de%20naves%20industriales%20"
-    "y%20me%20gustar%C3%ADa%20recibir%20asesor%C3%ADa."
+    "y%20quiero%20continuar%20con%20mi%20proyecto."
 )
 
 EQUIPAMIENTO = {
-    "básica": {
+    "basico": {
         "costo": 0,
         "desc": [
             "Estructura metálica principal",
@@ -75,7 +75,7 @@ def generar_pdf(datos):
     y -= 30
 
     c.setFont("Helvetica", 11)
-    c.drawString(50, y, f"Superficie: {datos['m2']:,.0f} m²"); y -= 16
+    c.drawString(50, y, f"Superficie nave: {datos['m2']:,.0f} m²"); y -= 16
     c.drawString(50, y, f"Altura libre: {datos['altura']} m"); y -= 16
     c.drawString(50, y, f"Estado: {datos['estado'].title()}"); y -= 16
     c.drawString(50, y, f"Equipamiento: {datos['equipamiento'].title()}"); y -= 20
@@ -91,15 +91,11 @@ def generar_pdf(datos):
 
     y -= 20
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, y, "Inversión estimada:")
+    c.drawString(50, y, "Inversión estimada nave:")
     y -= 16
 
     c.setFont("Helvetica", 11)
-    c.drawString(50, y, f"${datos['minimo']:,.0f} – ${datos['maximo']:,.0f} MXN")
-
-    y -= 30
-    c.setFont("Helvetica-Oblique", 9)
-    c.drawString(50, y, "Cotización preliminar, no contractual.")
+    c.drawString(50, y, f"${datos['nave_min']:,.0f} – ${datos['nave_max']:,.0f} MXN")
 
     c.showPage()
     c.save()
@@ -142,7 +138,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["step"] = "NAVE_EQUIP"
         await update.message.reply_text(
             "⚙️ Nivel de equipamiento:\n\n"
-            "🟢 Básica\n🟡 Intermedio\n🔴 Premium\n\n"
+            "🟢 Basico\n🟡 Intermedio\n🔴 Premium\n\n"
             "Escribe: Basico / Intermedio / Premium"
         )
         return
@@ -163,18 +159,19 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if estado in ["jalisco", "cdmx", "nuevo león"]:
             costo_m2 += 600
 
-        minimo = m2 * costo_m2
-        maximo = minimo * 1.12
+        nave_min = m2 * costo_m2
+        nave_max = nave_min * 1.12
+
+        context.user_data["nave_min"] = nave_min
+        context.user_data["nave_max"] = nave_max
 
         desglose = "\n".join(f"• {i}" for i in eq["desc"])
 
         await update.message.reply_text(
-            "📐 *Cotización preliminar*\n\n"
-            f"🏗️ *Nivel:* {texto.title()}\n\n"
-            "*Incluye:*\n"
-            f"{desglose}\n\n"
-            f"💰 *Inversión estimada:*\n"
-            f"${minimo:,.0f} – ${maximo:,.0f} MXN",
+            "📐 *Cotización de Nave Industrial*\n\n"
+            f"*Incluye:*\n{desglose}\n\n"
+            f"💰 *Costo nave:*\n"
+            f"${nave_min:,.0f} – ${nave_max:,.0f} MXN",
             parse_mode="Markdown"
         )
 
@@ -184,8 +181,8 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "estado": estado,
             "equipamiento": texto,
             "desc": eq["desc"],
-            "minimo": minimo,
-            "maximo": maximo
+            "nave_min": nave_min,
+            "nave_max": nave_max
         }
 
         ruta = generar_pdf(datos_pdf)
@@ -193,7 +190,6 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_document(open(ruta, "rb"))
 
-        # 👉 PASO CLARO A PROYECTO EJECUTIVO
         context.user_data["step"] = "PROY_TERRENO"
         await update.message.reply_text(
             "👉 *Cotiza tu proyecto ejecutivo*\n\n"
@@ -226,18 +222,19 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ Usa formato: 20x30")
             return
 
-        costo = m2_t * PROJECT_COST_M2
-        anticipo = costo * ANTICIPO
+        costo_proy = m2_t * PROJECT_COST_M2
+        anticipo = costo_proy * ANTICIPO
+
+        context.user_data["proy_costo"] = costo_proy
 
         await update.message.reply_text(
-            "📐 *Proyecto Ejecutivo Incluye:*\n"
+            "📐 *Proyecto Ejecutivo*\n"
             "• Mecánica de suelos\n"
             "• Cálculo estructural\n"
             "• Planos arquitectónicos\n\n"
             f"📏 *Área del terreno:* {m2_t:,.0f} m²\n"
-            f"💰 *Costo del proyecto:* ${costo:,.0f} MXN\n"
-            f"🔻 *Anticipo 30%:* ${anticipo:,.0f} MXN\n\n"
-            "👉 Lo ideal es continuar este proceso con un asesor especializado.",
+            f"💰 *Costo proyecto:* ${costo_proy:,.0f} MXN\n"
+            f"🔻 *Anticipo 30%:* ${anticipo:,.0f} MXN",
             parse_mode="Markdown"
         )
 
@@ -246,6 +243,23 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ===== CIERRE =====
     if step == "CIERRE":
+        nave_min = context.user_data.get("nave_min", 0)
+        nave_max = context.user_data.get("nave_max", 0)
+        proy = context.user_data.get("proy_costo", 0)
+
+        total_min = nave_min + proy
+        total_max = nave_max + proy
+
+        await update.message.reply_text(
+            "🧾 *Resumen General del Proyecto*\n\n"
+            f"🏗️ Nave industrial: ${nave_min:,.0f} – ${nave_max:,.0f} MXN\n"
+            f"📐 Proyecto ejecutivo: ${proy:,.0f} MXN\n\n"
+            f"💰 *Total estimado:*\n"
+            f"${total_min:,.0f} – ${total_max:,.0f} MXN\n\n"
+            "👉 *Lo ideal es continuar este proceso con un asesor especializado.*",
+            parse_mode="Markdown"
+        )
+
         if "ruta_pdf" in context.user_data:
             await update.message.reply_document(
                 open(context.user_data["ruta_pdf"], "rb"),
@@ -253,7 +267,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         await update.message.reply_text(
-            "📞 *Habla directamente con un asesor para afinar tu proyecto:*\n"
+            "📞 *Habla directamente con un asesor:*\n"
             f"👉 {VENDEDOR_TELEGRAM}\n\n"
             "✅ Proceso finalizado.\n"
             "Escribe *cotizar* para cotizar otra obra.",
